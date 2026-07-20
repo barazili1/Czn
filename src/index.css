@@ -1,0 +1,136 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Unbounded:wght@400;500;700;800;900&family=Oxanium:wght@400;600;800&family=Cairo:wght@300;400;500;600;700;800;900&family=Tajawal:wght@400;500;700;800;900&family=Orbitron:wght@400;700;900&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", "Cairo", "Tajawal", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Unbounded", "Cairo", "Tajawal", sans-serif;
+  --font-tech: "Oxanium", "Cairo", sans-serif;
+  --font-orbitron: "Orbitron", "Cairo", sans-serif;
+  
+  --color-brand-blue: #ef4444;
+  --color-brand-blue-dark: #b91c1c;
+  --color-brand-gray: rgba(255, 255, 255, 0.05);
+  --color-brand-black: #ffffff;
+  --color-brand-dark: #0f1218;
+
+  --radius-4xl: 40px;
+
+  @keyframes shimmer {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(100%); }
+  }
+
+  --animate-shimmer: shimmer 2s infinite linear;
+}
+
+@layer base {
+  body {
+    @apply font-sans text-white bg-black selection:bg-brand-blue/30;
+  }
+}
+
+/* RTL class removed */
+
+@keyframes float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-15px) rotate(3deg); }
+}
+
+.animate-float {
+  animation: float 8s ease-in-out infinite;
+}
+
+.unbounded-bold {
+  font-family: "Unbounded", sans-serif;
+  font-weight: 800;
+}
+
+/* Premium Glowing Scrollbars for futuristic theme */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.01);
+  border-radius: 99px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(239, 68, 68, 0.25);
+  border-radius: 99px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(239, 68, 68, 0.45);
+}
+
+/* Custom utility to hide scrollbars completely */
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+}
+.no-scrollbar {
+  -ms-overflow-style: none !important;  /* IE and Edge */
+  scrollbar-width: none !important;  /* Firefox */
+}
+
+.red-glow {
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.5);
+}
+.blue-glow {
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.5);
+}
+
+/* Cyberpunk and Emerald Theme styles */
+.cyber-grid {
+  background-image: linear-gradient(rgba(16, 185, 129, 0.05) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(16, 185, 129, 0.05) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+.cyber-radial {
+  background: radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.12), transparent 75%);
+}
+.glass-premium {
+  background: rgba(3, 14, 10, 0.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.bg-obsidian\/45 {
+  background-color: rgba(3, 10, 7, 0.45);
+}
+.bg-obsidian\/40 {
+  background-color: rgba(3, 10, 7, 0.40);
+}
+.emerald-glow {
+  box-shadow: 0 0 22px rgba(16, 185, 129, 0.45);
+}
+.cyber-grid-red {
+  background-image: linear-gradient(rgba(239, 68, 68, 0.05) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(239, 68, 68, 0.05) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+.cyber-radial-red {
+  background: radial-gradient(circle at 50% 50%, rgba(239, 68, 68, 0.12), transparent 75%);
+}
+.glass-premium-red {
+  background: rgba(15, 2, 4, 0.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.bg-obsidian-red\/45 {
+  background-color: rgba(10, 2, 3, 0.45);
+}
+.bg-obsidian-red\/40 {
+  background-color: rgba(10, 2, 3, 0.40);
+}
+.red-glow-strong {
+  box-shadow: 0 0 22px rgba(239, 68, 68, 0.45);
+}
+.font-orbitron {
+  font-family: "Orbitron", "Cairo", sans-serif;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none !important;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+

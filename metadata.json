@@ -1,0 +1,8 @@
+{
+  "name": "Remix: 1xBet Premium Landing",
+  "description": "A high-conversion 1xBet landing page for sports betting and casino with multi-language and RTL support.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
