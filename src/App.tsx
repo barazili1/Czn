@@ -55,8 +55,17 @@ import { DotLottiePlayer } from '@dotlottie/react-player';
 // --- Security Encryption Helper ---
 const dUrl = (str: string) => str.split('').reverse().join('');
 
+const parseAsUTC = (isoStr: string) => {
+  if (!isoStr) return new Date();
+  let formatted = isoStr;
+  if (!formatted.endsWith('Z') && !formatted.match(/[-+]\d{2}:?\d{2}$/)) {
+    formatted = formatted + 'Z';
+  }
+  return new Date(formatted);
+};
+
 // --- Safe Fetch Proxy to fix CORS and "Load Failed" errors in browser / iframe environments ---
-const apiFetch = (input: RequestInfo | URL, init?: RequestInit) => {
+const apiFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
   let urlStr = '';
   if (typeof input === 'string') {
     urlStr = input;
@@ -68,7 +77,25 @@ const apiFetch = (input: RequestInfo | URL, init?: RequestInit) => {
 
   if (urlStr && (urlStr.startsWith('http://') || urlStr.startsWith('https://'))) {
     const proxyUrl = `/api/proxy?url=${encodeURIComponent(urlStr)}`;
-    return window.fetch(proxyUrl, init);
+    try {
+      const res = await window.fetch(proxyUrl, init);
+      if (res.ok) {
+        // Clone response to verify it is valid JSON (to prevent syntax errors on HTML gateway error pages)
+        const clone = res.clone();
+        try {
+          await clone.json();
+          return res;
+        } catch (e) {
+          console.warn("Proxy returned invalid JSON, falling back to direct fetch:", e);
+        }
+      } else {
+        console.warn(`Proxy returned non-OK status: ${res.status}, falling back to direct fetch`);
+      }
+    } catch (err) {
+      console.warn("Proxy fetch failed, falling back to direct fetch:", err);
+    }
+    // Fallback: direct fetch from browser
+    return window.fetch(input, init);
   }
   return window.fetch(input, init);
 };
@@ -382,6 +409,10 @@ const Conditions = ({ t, promoHref = 'https://lb-aff.com//L?tag=d_3386416m_66803
   const [isVerifying, setIsVerifying] = useState(false);
   const [verifyStatus, setVerifyStatus] = useState<"idle" | "verifying" | "success" | "error">("idle");
 
+  const [regImage, setRegImage] = useState<string | null>(null);
+  const [depImage, setDepImage] = useState<string | null>(null);
+  const [localError, setLocalError] = useState<string | null>(null);
+
   const navigate = useNavigate();
 
   const handleCopy = () => {
@@ -390,9 +421,32 @@ const Conditions = ({ t, promoHref = 'https://lb-aff.com//L?tag=d_3386416m_66803
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleFileChange = (file: File, type: 'reg' | 'dep') => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (type === 'reg') {
+        setRegImage(reader.result as string);
+      } else {
+        setDepImage(reader.result as string);
+      }
+      setLocalError(null);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleSubmit = () => {
     if (!platform) return;
-    
+
+    if (!regImage || !depImage) {
+      setLocalError(
+        t.lang === 'ar'
+          ? "يرجى رفع كلاً من صورة إثبات التسجيل وصورة إثبات الإيداع لتفعيل الاشتراك (الشرط إجباري)!"
+          : "Please upload both registration and deposit proofs to activate (Mandatory constraint)!"
+      );
+      return;
+    }
+
+    setLocalError(null);
     setIsVerifying(true);
     setVerifyStatus("success");
     setIsSubmitting(true);
@@ -642,6 +696,134 @@ const Conditions = ({ t, promoHref = 'https://lb-aff.com//L?tag=d_3386416m_66803
                       <Wallet className="w-8 h-8 text-white/20" />
                     </div>
                   </section>
+
+                  {/* 6. Proof Uploads (Mandatory) */}
+                  <section className="space-y-4 pb-20">
+                    <div className="flex items-center justify-end gap-2 mb-2">
+                      <h3 className="text-sm font-bold text-white/60 uppercase">إثبات التسجيل والإيداع (إجباري)</h3>
+                      <div className="w-6 h-6 rounded-full bg-red-500/20 flex items-center justify-center border border-red-500/30">
+                        <span className="text-[10px] font-bold text-red-500">06</span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4 text-right">
+                      {/* Upload 1: Registration Proof */}
+                      <div className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-3">
+                        <div className="flex flex-row-reverse items-center justify-between">
+                          <span className="text-xs font-bold text-white/90">إثبات التسجيل بالبروموكود (KAJO117)</span>
+                          {regImage ? (
+                            <span className="flex items-center gap-1 text-[10px] font-bold text-green-500 bg-green-500/10 px-2 py-0.5 rounded-full">
+                              مرفوع <Check className="w-3 h-3" />
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-bold text-red-400 bg-red-400/10 px-2 py-0.5 rounded-full">
+                              مطلوب
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-white/40 leading-relaxed">يرجى رفع لقطة شاشة توضح تسجيل حسابك بالرمز الترويجي KAJO117</p>
+                        
+                        <div 
+                          onDragOver={(e) => e.preventDefault()}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            const file = e.dataTransfer.files?.[0];
+                            if (file) handleFileChange(file, 'reg');
+                          }}
+                          className="border border-dashed border-white/10 hover:border-red-500/40 rounded-xl p-6 transition-all bg-black/20 flex flex-col items-center justify-center gap-2 cursor-pointer relative"
+                          onClick={() => document.getElementById('reg-upload-input')?.click()}
+                        >
+                          <input 
+                            type="file" 
+                            id="reg-upload-input" 
+                            accept="image/*" 
+                            className="hidden" 
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) handleFileChange(file, 'reg');
+                            }}
+                          />
+                          {regImage ? (
+                            <div className="relative w-full max-h-32 overflow-hidden rounded-lg flex items-center justify-center bg-black/40">
+                              <img src={regImage} alt="Registration Proof" className="max-h-32 object-contain" />
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setRegImage(null);
+                                }}
+                                className="absolute top-2 right-2 p-1.5 bg-black/80 hover:bg-red-600 rounded-full transition-colors border border-white/10"
+                              >
+                                <X className="w-3.5 h-3.5 text-white" />
+                              </button>
+                            </div>
+                          ) : (
+                            <>
+                              <Upload className="w-6 h-6 text-white/40 animate-pulse" />
+                              <span className="text-xs text-white/60">اسحب الصورة هنا أو اضغط للاختيار</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Upload 2: Deposit Proof */}
+                      <div className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-3">
+                        <div className="flex flex-row-reverse items-center justify-between">
+                          <span className="text-xs font-bold text-white/90">إثبات الإيداع (300 EGP / 5$)</span>
+                          {depImage ? (
+                            <span className="flex items-center gap-1 text-[10px] font-bold text-green-500 bg-green-500/10 px-2 py-0.5 rounded-full">
+                              مرفوع <Check className="w-3 h-3" />
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-bold text-red-400 bg-red-400/10 px-2 py-0.5 rounded-full">
+                              مطلوب
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-white/40 leading-relaxed">يرجى رفع لقطة شاشة لعملية الإيداع (بقيمة 300 جنيه أو 5 دولار فأكثر)</p>
+                        
+                        <div 
+                          onDragOver={(e) => e.preventDefault()}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            const file = e.dataTransfer.files?.[0];
+                            if (file) handleFileChange(file, 'dep');
+                          }}
+                          className="border border-dashed border-white/10 hover:border-red-500/40 rounded-xl p-6 transition-all bg-black/20 flex flex-col items-center justify-center gap-2 cursor-pointer relative"
+                          onClick={() => document.getElementById('dep-upload-input')?.click()}
+                        >
+                          <input 
+                            type="file" 
+                            id="dep-upload-input" 
+                            accept="image/*" 
+                            className="hidden" 
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) handleFileChange(file, 'dep');
+                            }}
+                          />
+                          {depImage ? (
+                            <div className="relative w-full max-h-32 overflow-hidden rounded-lg flex items-center justify-center bg-black/40">
+                              <img src={depImage} alt="Deposit Proof" className="max-h-32 object-contain" />
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDepImage(null);
+                                }}
+                                className="absolute top-2 right-2 p-1.5 bg-black/80 hover:bg-red-600 rounded-full transition-colors border border-white/10"
+                              >
+                                <X className="w-3.5 h-3.5 text-white" />
+                              </button>
+                            </div>
+                          ) : (
+                            <>
+                              <Upload className="w-6 h-6 text-white/40 animate-pulse" />
+                              <span className="text-xs text-white/60">اسحب الصورة هنا أو اضغط للاختيار</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </section>
                 </motion.div>
               )}
             </motion.div>
@@ -657,8 +839,17 @@ const Conditions = ({ t, promoHref = 'https://lb-aff.com//L?tag=d_3386416m_66803
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 100 }}
             transition={{ duration: 0.3 }}
-            className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-[#020510] via-[#020510] to-transparent border-t border-white/5 max-w-lg mx-auto z-[50]"
+            className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-[#020510] via-[#020510] to-transparent border-t border-white/5 max-w-lg mx-auto z-[50] flex flex-col gap-2.5"
           >
+            {localError && (
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-xs text-red-400 font-bold text-center leading-relaxed"
+              >
+                {localError}
+              </motion.div>
+            )}
             <button 
               onClick={handleSubmit}
               disabled={isVerifying}
@@ -1118,6 +1309,21 @@ const FeatureSlider = ({ t }: { t: any }) => {
       if (crashData && typeof crashData === 'object') {
         for (const k of Object.keys(crashData)) {
           const item = crashData[k];
+          if (item && item.expires_at) {
+            const isExpired = new Date().getTime() > parseAsUTC(item.expires_at).getTime();
+            if (isExpired) {
+              // Delete it from Firebase RTDB immediately
+              try {
+                await fetch(`https://crazy-12-default-rtdb.firebaseio.com/crash/${k}.json`, {
+                  method: 'DELETE'
+                });
+              } catch (e) {
+                console.error("Failed to delete expired crash code:", e);
+              }
+              // Skip checking this item since it is expired
+              continue;
+            }
+          }
           if (item && item.key && String(item.key).trim().toLowerCase() === code.toLowerCase()) {
             foundInCrash = true;
             if (item["1xbet_id"]) {
@@ -1153,6 +1359,21 @@ const FeatureSlider = ({ t }: { t: any }) => {
       if (appleData && typeof appleData === 'object') {
         for (const k of Object.keys(appleData)) {
           const item = appleData[k];
+          if (item && item.expires_at) {
+            const isExpired = new Date().getTime() > parseAsUTC(item.expires_at).getTime();
+            if (isExpired) {
+              // Delete it from Firebase RTDB immediately
+              try {
+                await fetch(`https://crazy-12-default-rtdb.firebaseio.com/apple/${k}.json`, {
+                  method: 'DELETE'
+                });
+              } catch (e) {
+                console.error("Failed to delete expired apple code:", e);
+              }
+              // Skip checking this item since it is expired
+              continue;
+            }
+          }
           if (item && item.key && String(item.key).trim().toLowerCase() === code.toLowerCase()) {
             foundInApple = true;
             if (item["1xbet_id"]) {
@@ -1185,12 +1406,13 @@ const FeatureSlider = ({ t }: { t: any }) => {
           ? "الكود غير صحيح أو منتهي الصلاحية"
           : "Invalid or expired code"
       );
-    } catch (err) {
+    } catch (err: any) {
       console.error("Login verification failed:", err);
+      const errMsg = err instanceof Error ? err.message : String(err);
       setErrorMsg(
         t.lang === 'ar'
-          ? "حدث خطأ أثناء الاتصال بالخادم. يرجى المحاولة لاحقاً."
-          : "Error connecting to server. Please try again."
+          ? `حدث خطأ أثناء الاتصال بالخادم: ${errMsg}. يرجى المحاولة لاحقاً.`
+          : `Error connecting to server: ${errMsg}. Please try again.`
       );
     } finally {
       setIsLoggingIn(false);
@@ -2743,6 +2965,20 @@ const CrashEngine = ({ t }: { t: any }) => {
           if (dbData && typeof dbData === 'object') {
             for (const k of Object.keys(dbData)) {
               const item = dbData[k];
+              if (item && item.expires_at) {
+                const isExpired = new Date().getTime() > parseAsUTC(item.expires_at).getTime();
+                if (isExpired) {
+                  // Delete it from Firebase RTDB immediately
+                  try {
+                    await fetch(`https://crazy-12-default-rtdb.firebaseio.com/${dbPath}/${k}.json`, {
+                      method: 'DELETE'
+                    });
+                  } catch (e) {
+                    console.error(`Failed to delete expired ${dbPath} code in fetchBalance:`, e);
+                  }
+                  continue;
+                }
+              }
               if (item && item.key && String(item.key).trim().toLowerCase() === String(inputID).trim().toLowerCase()) {
                 isValid = true;
                 break;
@@ -2821,6 +3057,20 @@ const CrashEngine = ({ t }: { t: any }) => {
             let matchedId = "";
             for (const k of Object.keys(dbData)) {
               const item = dbData[k];
+              if (item && item.expires_at) {
+                const isExpired = new Date().getTime() > parseAsUTC(item.expires_at).getTime();
+                if (isExpired) {
+                  // Delete it from Firebase RTDB immediately
+                  try {
+                    await fetch(`https://crazy-12-default-rtdb.firebaseio.com/${dbPath}/${k}.json`, {
+                      method: 'DELETE'
+                    });
+                  } catch (e) {
+                    console.error(`Failed to delete expired ${dbPath} code in validateAndPoll:`, e);
+                  }
+                  continue;
+                }
+              }
               if (item && item.key && String(item.key).trim().toLowerCase() === String(inputID).trim().toLowerCase()) {
                 found = true;
                 if (item["1xbet_id"]) {
